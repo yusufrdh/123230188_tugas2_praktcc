@@ -13,36 +13,25 @@ const btnCancel = document.querySelector("#btn-cancel");
 const loadingEl = document.querySelector("#loading");
 const emptyState = document.querySelector("#empty-state");
 const toastContainer = document.querySelector("#toast-container");
-
-// ===== SVG Icons =====
-const icons = {
-  edit: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-  trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
-};
+const btnScrollForm = document.querySelector("#btn-scroll-form");
 
 // ===== Initialize =====
 document.addEventListener("DOMContentLoaded", () => {
   getNotes();
 });
 
-// ===== Toast =====
-function showToast(message, type = "success") {
-  const toast = document.createElement("div");
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  toastContainer.appendChild(toast);
-  setTimeout(() => {
-    toast.classList.add("toast-exit");
-    setTimeout(() => toast.remove(), 200);
-  }, 2500);
-}
+// Scroll to form when "Buat Catatan" button is clicked
+btnScrollForm.addEventListener("click", () => {
+  document.querySelector("#form-section").scrollIntoView({ behavior: "smooth" });
+  inputJudul.focus();
+});
 
 // ===== Form Submit =====
 noteForm.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const id = noteForm.dataset.editId || "";
   const judul = inputJudul.value.trim();
   const isi = inputIsi.value.trim();
-  const id = inputJudul.dataset.id || "";
 
   if (!judul || !isi) return;
 
@@ -57,26 +46,27 @@ noteForm.addEventListener("submit", async (e) => {
     resetForm();
     getNotes();
   } catch (error) {
-    console.error(error.response?.data || error.message);
-    showToast("Gagal menyimpan catatan", "error");
+    showToast("Terjadi kesalahan");
   }
 });
 
-// ===== Cancel =====
-btnCancel.addEventListener("click", () => resetForm());
+// ===== Cancel Edit =====
+btnCancel.addEventListener("click", () => {
+  resetForm();
+});
 
+// ===== Reset Form =====
 function resetForm() {
-  inputJudul.dataset.id = "";
-  inputJudul.value = "";
-  inputIsi.value = "";
+  noteForm.reset();
+  noteForm.dataset.editId = "";
   formTitle.textContent = "Tambah Catatan Baru";
   btnSubmit.textContent = "Simpan";
   btnCancel.style.display = "none";
 }
 
-// ===== Get All Notes =====
+// ===== Get Notes =====
 async function getNotes() {
-  loadingEl.style.display = "flex";
+  loadingEl.style.display = "block";
   emptyState.style.display = "none";
   document.querySelectorAll(".note-card").forEach((el) => el.remove());
 
@@ -92,53 +82,50 @@ async function getNotes() {
     }
 
     notesCount.textContent = `${notes.length} catatan`;
-    notes.forEach((note) => notesList.appendChild(createNoteCard(note)));
+    notes.forEach((note) => renderNote(note));
   } catch (error) {
     loadingEl.style.display = "none";
-    console.error(error.response?.data || error.message);
-    showToast("Gagal memuat catatan. Pastikan backend berjalan.", "error");
     emptyState.style.display = "block";
-    emptyState.querySelector("p").textContent = "Tidak dapat terhubung ke server";
+    notesCount.textContent = "0 catatan";
   }
 }
 
-// ===== Create Note Card =====
-function createNoteCard(note) {
+// ===== Render Note Card =====
+function renderNote(note) {
   const card = document.createElement("div");
   card.className = "note-card";
 
-  const tanggal = new Date(note.tanggal_dibuat).toLocaleDateString("id-ID", {
+  const date = new Date(note.tanggal_dibuat).toLocaleDateString("id-ID", {
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 
   card.innerHTML = `
-    <h3 class="note-title">${escapeHtml(note.judul)}</h3>
-    <p class="note-content">${escapeHtml(note.isi)}</p>
+    <h3 class="note-title">${note.judul}</h3>
+    <p class="note-content">${note.isi}</p>
     <div class="note-footer">
-      <span class="note-date">${tanggal}</span>
+      <span class="note-date">${date}</span>
       <div class="note-actions">
-        <button class="btn-action btn-edit" title="Edit">${icons.edit} Edit</button>
-        <button class="btn-action btn-delete" title="Hapus">${icons.trash} Hapus</button>
+        <button class="btn-edit" data-id="${note.id}">Edit</button>
+        <button class="btn-delete" data-id="${note.id}">Hapus</button>
       </div>
     </div>
   `;
 
-  // Edit
+  // Edit handler
   card.querySelector(".btn-edit").addEventListener("click", () => {
-    inputJudul.dataset.id = note.id;
+    noteForm.dataset.editId = note.id;
     inputJudul.value = note.judul;
     inputIsi.value = note.isi;
     formTitle.textContent = "Edit Catatan";
-    btnSubmit.textContent = "Update";
+    btnSubmit.textContent = "Perbarui";
     btnCancel.style.display = "inline-flex";
     document.querySelector("#form-section").scrollIntoView({ behavior: "smooth" });
+    inputJudul.focus();
   });
 
-  // Delete
+  // Delete handler
   card.querySelector(".btn-delete").addEventListener("click", async () => {
     const confirmed = await showConfirm(`Hapus catatan "${note.judul}"?`);
     if (!confirmed) return;
@@ -147,46 +134,50 @@ function createNoteCard(note) {
       showToast("Catatan berhasil dihapus");
       getNotes();
     } catch (error) {
-      console.error(error.response?.data || error.message);
-      showToast("Gagal menghapus catatan", "error");
+      showToast("Gagal menghapus catatan");
     }
   });
 
-  return card;
+  notesList.appendChild(card);
+}
+
+// ===== Toast =====
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
 }
 
 // ===== Custom Confirm Modal =====
 function showConfirm(message) {
   return new Promise((resolve) => {
-    const overlay = document.getElementById("modal-overlay");
-    const msgEl = document.getElementById("modal-message");
-    const btnConfirm = document.getElementById("modal-confirm");
-    const btnCancel = document.getElementById("modal-cancel");
+    const overlay = document.querySelector("#modal-overlay");
+    const msgEl = document.querySelector("#modal-message");
+    const btnConfirm = document.querySelector("#modal-confirm");
+    const btnCancel = document.querySelector("#modal-cancel");
 
     msgEl.textContent = message;
     overlay.style.display = "flex";
 
-    function cleanup(result) {
+    function cleanup() {
       overlay.style.display = "none";
       btnConfirm.removeEventListener("click", onConfirm);
       btnCancel.removeEventListener("click", onCancel);
-      overlay.removeEventListener("click", onOverlay);
-      resolve(result);
     }
 
-    function onConfirm() { cleanup(true); }
-    function onCancel() { cleanup(false); }
-    function onOverlay(e) { if (e.target === overlay) cleanup(false); }
+    function onConfirm() {
+      cleanup();
+      resolve(true);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(false);
+    }
 
     btnConfirm.addEventListener("click", onConfirm);
     btnCancel.addEventListener("click", onCancel);
-    overlay.addEventListener("click", onOverlay);
   });
-}
-
-// ===== Escape HTML =====
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
 }
