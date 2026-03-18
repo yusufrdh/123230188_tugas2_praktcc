@@ -1,0 +1,35 @@
+### Get All Notes
+GET http://localhost:3011/api/v1/notes
+
+### Get Note by ID
+GET http://localhost:3011/api/v1/notes/1
+
+### Create Note
+POST http://localhost:3011/api/v1/notes
+Content-Type: application/json
+
+{
+  "judul": "Catatan Pertama",
+  "isi": "Ini adalah isi catatan pertama saya"
+}
+
+### Create Another Note
+POST http://localhost:3011/api/v1/notes
+Content-Type: application/json
+
+{
+  "judul": "Catatan Kedua",
+  "isi": "Ini adalah isi catatan kedua saya"
+}
+
+### Update Note
+PUT http://localhost:3011/api/v1/notes/1
+Content-Type: application/json
+
+{
+  "judul": "Catatan Pertama (Diperbarui)",
+  "isi": "Isi catatan yang sudah diperbarui"
+}
+
+### Delete Note
+DELETE http://localhost:3011/api/v1/notes/1
